@@ -1,9 +1,13 @@
 services:
   - type: web
     name: quotetext-backend
-    env: node
+    runtime: node
+    region: oregon
+    repo: https://github.com/chideraezeudu2-sudo/quotetext-backend
+    branch: main
     buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: TWILIO_ACCOUNT_SID
         sync: false
