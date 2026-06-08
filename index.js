@@ -12,8 +12,10 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Routes
+// SMS Routes
 app.use('/sms', smsRoutes);
+
+// Voice Routes
 app.use('/voice', voiceRoutes);
 
 // Health check endpoint
@@ -27,7 +29,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`QuoteText backend running on port ${PORT}`);
+  console.log('QuoteText backend running on port ' + PORT);
 });
 
 module.exports = app;
