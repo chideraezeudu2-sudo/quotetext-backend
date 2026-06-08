@@ -19,8 +19,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.post('/sms', smsRoutes);
-app.post('/voice', voiceRoutes);
+app.use('/sms', smsRoutes);
+app.use('/voice', voiceRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
