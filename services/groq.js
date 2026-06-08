@@ -1,6 +1,5 @@
 const Groq = require('groq-sdk');
 const https = require('https');
-const http = require('http');
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || ''
@@ -50,12 +49,20 @@ async function extractMaterials(text) {
 
 function downloadAudio(url) {
   return new Promise((resolve, reject) => {
-    const protocol = url.startsWith('https') ? https : http;
+    // Build authentication header for Twilio
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     
-    protocol.get(url, { timeout: 30000 }, (response) => {
+    const headers = {};
+    if (twilioAccountSid && twilioAuthToken) {
+      const auth = Buffer.from(twilioAccountSid + ':' + twilioAuthToken).toString('base64');
+      headers['Authorization'] = 'Basic ' + auth;
+    }
+    
+    https.get(url, { headers, timeout: 30000 }, (response) => {
       if (response.statusCode === 301 || response.statusCode === 302) {
-        // Handle redirect
-        protocol.get(response.headers.location, (redirectResponse) => {
+        // Handle redirect with auth
+        https.get(response.headers.location, { headers, timeout: 30000 }, (redirectResponse) => {
           const chunks = [];
           redirectResponse.on('data', (chunk) => chunks.push(chunk));
           redirectResponse.on('end', () => resolve(Buffer.concat(chunks)));
@@ -79,13 +86,14 @@ async function transcribeAudio(audioUrl) {
   try {
     console.log('Downloading audio from:', audioUrl);
     const audioBuffer = await downloadAudio(audioUrl);
+    console.log('Audio downloaded, size:', audioBuffer.length, 'bytes');
     
-    // Create a file-like object for Groq
-    const file = {
-      buffer: () => Promise.resolve(audioBuffer),
-      name: 'audio.wav',
-      mimeType: 'audio/wav'
-    };
+    if (audioBuffer.length < 1000) {
+      throw new Error('Audio file too small - likely empty or auth failed');
+    }
+    
+    // Create proper File object for Groq SDK
+    const file = new File([audioBuffer], 'recording.wav', { type: 'audio/wav' });
     
     const transcription = await groq.audio.transcriptions.create({
       file: file,
