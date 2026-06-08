@@ -21,6 +21,11 @@ app.get('/', (req, res) => {
   res.send('QuoteText Backend is running');
 });
 
+// Debug test endpoint
+app.post('/test', (req, res) => {
+  res.send('Test route works: ' + JSON.stringify(req.body));
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
