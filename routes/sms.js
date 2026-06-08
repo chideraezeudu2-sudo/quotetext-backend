@@ -192,20 +192,74 @@ router.post('/', async (req, res) => {
           onboarding_step: 'delivery'
         })
         .eq('id', business.id);
-      reply = "Do you prefer pickup or delivery for materials?";
+      reply = "Last step - optional but powerful. Want QuoteText to capture materials from your customer calls? We can do this by forwarding your business line to your QuoteText number. Reply YES to set it up or SKIP to skip.";
 
     } else if (step === 'delivery') {
-      // Complete onboarding
+      // Save delivery preference, ask for call forwarding
       await supabase
         .from('businesses')
         .update({ 
           delivery_preference: body,
-          onboarding_step: 'complete',
-          onboarding_complete: true,
-          active: true
+          onboarding_step: 'forwarding'
         })
         .eq('id', business.id);
-      reply = "Setup complete. You are ready to use QuoteText. Text me any job description to get started. Text HELP anytime for commands.";
+      reply = "Last step - optional but powerful. Want QuoteText to capture materials from your customer calls? We can do this by forwarding your business line to your QuoteText number. Reply YES to set it up or SKIP to skip.";
+
+    } else if (step === 'forwarding') {
+      if (upperBody === 'SKIP') {
+        // Skip call forwarding, complete onboarding
+        await supabase
+          .from('businesses')
+          .update({ 
+            onboarding_step: 'complete',
+            onboarding_complete: true,
+            active: true
+          })
+          .eq('id', business.id);
+        reply = "No problem. Just text us job descriptions anytime and we'll build your material list. You're all set. Text HELP anytime.";
+      } else if (upperBody === 'YES') {
+        // Send call forwarding instructions and wait for DONE
+        await supabase
+          .from('businesses')
+          .update({ 
+            onboarding_step: 'forwarding_wait'
+          })
+          .eq('id', business.id);
+        reply = "To forward your calls: On your phone dial *72 then 2566374466 and press call. That's it. Text DONE when finished or HELP if it's not working.";
+      } else {
+        // Any other response - remind them
+        reply = "Want to capture materials from calls? Reply YES to set up call forwarding or SKIP to skip.";
+      }
+
+    } else if (step === 'forwarding_wait') {
+      if (upperBody === 'DONE') {
+        // Call forwarding set up, complete onboarding
+        await supabase
+          .from('businesses')
+          .update({ 
+            call_forwarding_enabled: true,
+            onboarding_step: 'complete',
+            onboarding_complete: true,
+            active: true
+          })
+          .eq('id', business.id);
+        reply = "Perfect. Your calls will now be automatically captured. You're all set. Text HELP anytime.";
+      } else if (upperBody === 'HELP') {
+        reply = "No worries. Forward calls by dialing *72 then your QuoteText number. Works on most carriers. If yours is different Google 'call forwarding' plus your carrier name. Or just skip it and text us jobs manually - reply SKIP.";
+      } else if (upperBody === 'SKIP') {
+        // Skip call forwarding, complete onboarding
+        await supabase
+          .from('businesses')
+          .update({ 
+            onboarding_step: 'complete',
+            onboarding_complete: true,
+            active: true
+          })
+          .eq('id', business.id);
+        reply = "No problem. Just text us job descriptions anytime and we'll build your material list. You're all set. Text HELP anytime.";
+      } else {
+        reply = "Text DONE when you've set up call forwarding, or SKIP to skip.";
+      }
 
     } else if (upperBody === 'CANCEL') {
       // Allow cancel during onboarding
@@ -215,7 +269,7 @@ router.post('/', async (req, res) => {
       reply = "Onboarding cancelled. Text YES to start again.";
     } else {
       // Any other message during onboarding - ask current question
-      if (step === 'trade') {
+      if (step === 'start') {
         reply = "What trade are you in? (e.g. Landscaping, Roofing, Plumbing, Electrical)";
       } else if (step === 'supplier') {
         reply = "What is your preferred supplier? (e.g. Home Depot, Lowe's, Ferguson, SiteOne)";
@@ -223,8 +277,12 @@ router.post('/', async (req, res) => {
         reply = "What is your go-to store location?";
       } else if (step === 'delivery') {
         reply = "Do you prefer pickup or delivery for materials?";
+      } else if (step === 'forwarding') {
+        reply = "Want to capture materials from calls? Reply YES to set up call forwarding or SKIP to skip.";
+      } else if (step === 'forwarding_wait') {
+        reply = "Text DONE when you've set up call forwarding, or SKIP to skip.";
       } else {
-        reply = "Welcome to QuoteText. What trade are you in? (e.g. Landscaping, Roofing, Plumbing)";
+        reply = "What trade are you in? (e.g. Landscaping, Roofing, Plumbing)";
       }
     }
 
