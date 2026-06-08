@@ -18,12 +18,12 @@ app.post('/voice', voiceRoutes);
 
 // Health check endpoint
 app.get('/', (req, res) => {
-  res.send('QuoteText Backend is running');
+  res.send('QuoteText Backend is running v' + Date.now());
 });
 
 // Debug test endpoint
 app.post('/test', (req, res) => {
-  res.send('Test route works: ' + JSON.stringify(req.body));
+  res.send('Test route works v' + Date.now() + ': ' + JSON.stringify(req.body));
 });
 
 app.get('/health', (req, res) => {
