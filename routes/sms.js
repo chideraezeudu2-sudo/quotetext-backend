@@ -127,33 +127,91 @@ router.post('/', async (req, res) => {
 
   let reply = '';
 
-  // Command parser - check in order
-  if (upperBody === 'YES') {
-    // Onboarding flow
-    if (!business.onboarding_complete) {
-      // Check if this is the trade question response
-      if (business.onboarding_trade) {
-        // Complete onboarding
-        await supabase
-          .from('businesses')
-          .update({ 
-            onboarding_complete: true,
-            trade: business.onboarding_trade,
-            onboarding_trade: null
-          })
-          .eq('id', business.id);
-        reply = `Welcome to QuoteText, ${business.trade || 'Tradesperson'}! Your subscription is active. Text a job description to get started.`;
+  // ONBOARDING FLOW - Check onboarding_step on every message if not complete
+  if (!business.onboarding_complete) {
+    const step = business.onboarding_step || 'start';
+    
+    if (upperBody === 'YES' && step === 'start') {
+      // Begin onboarding - ask for trade
+      await supabase
+        .from('businesses')
+        .update({ 
+          onboarding_trade: body,
+          onboarding_step: 'trade'
+        })
+        .eq('id', business.id);
+      reply = "Welcome to QuoteText. What trade are you in? (e.g. Landscaping, Roofing, Plumbing, Electrical)";
+      
+    } else if (step === 'trade') {
+      // Save trade, ask for supplier
+      await supabase
+        .from('businesses')
+        .update({ 
+          trade: body,
+          onboarding_step: 'supplier'
+        })
+        .eq('id', business.id);
+      reply = "What is your preferred supplier? (e.g. Home Depot, Lowe's, Ferguson, SiteOne, Menards)";
+
+    } else if (step === 'supplier') {
+      // Save supplier, ask for store location
+      await supabase
+        .from('businesses')
+        .update({ 
+          preferred_supplier: body,
+          onboarding_step: 'store'
+        })
+        .eq('id', business.id);
+      reply = "What is your go-to store location? (e.g. Store #1234, Downtown location)";
+
+    } else if (step === 'store') {
+      // Save store location, ask for delivery preference
+      await supabase
+        .from('businesses')
+        .update({ 
+          store_location: body,
+          onboarding_step: 'delivery'
+        })
+        .eq('id', business.id);
+      reply = "Do you prefer pickup or delivery for materials?";
+
+    } else if (step === 'delivery') {
+      // Complete onboarding
+      await supabase
+        .from('businesses')
+        .update({ 
+          delivery_preference: body,
+          onboarding_step: 'complete',
+          onboarding_complete: true,
+          active: true
+        })
+        .eq('id', business.id);
+      reply = "Setup complete. You are ready to use QuoteText. Text me any job description to get started. Text HELP anytime for commands.";
+
+    } else if (upperBody === 'CANCEL') {
+      // Allow cancel during onboarding
+      reply = "To cancel QuoteText reply CONFIRM CANCEL.";
+    } else if (upperBody === 'CONFIRM CANCEL') {
+      await supabase.from('businesses').update({ active: false }).eq('id', business.id);
+      reply = "Onboarding cancelled. Text YES to start again.";
+    } else {
+      // Any other message during onboarding - ask current question
+      if (step === 'trade') {
+        reply = "What trade are you in? (e.g. Landscaping, Roofing, Plumbing, Electrical)";
+      } else if (step === 'supplier') {
+        reply = "What is your preferred supplier? (e.g. Home Depot, Lowe's, Ferguson, SiteOne)";
+      } else if (step === 'store') {
+        reply = "What is your go-to store location?";
+      } else if (step === 'delivery') {
+        reply = "Do you prefer pickup or delivery for materials?";
       } else {
-        // Start onboarding - ask for trade
-        await supabase
-          .from('businesses')
-          .update({ onboarding_trade: body })
-          .eq('id', business.id);
         reply = "Welcome to QuoteText. What trade are you in? (e.g. Landscaping, Roofing, Plumbing)";
       }
-    } else {
-      reply = "Your account is already set up. Text a job description to get started.";
     }
+
+  } else if (upperBody === 'YES') {
+    // Onboarding already complete
+    reply = "Your account is already set up. Text a job description to get started or HELP for commands.";
 
   } else if (upperBody === 'APPROVE') {
     // Approve most recent pending job
