@@ -92,16 +92,33 @@ async function transcribeAudio(audioUrl) {
       throw new Error('Audio file too small - likely empty or auth failed');
     }
     
-    // Create proper File object for Groq SDK
-    const file = new File([audioBuffer], 'recording.wav', { type: 'audio/wav' });
+    // Create proper File object for Groq SDK with explicit type
+    const file = new File([audioBuffer], 'recording.wav', { 
+      type: 'audio/wav' 
+    });
     
+    console.log('Sending to Groq Whisper...');
     const transcription = await groq.audio.transcriptions.create({
       file: file,
       model: 'whisper-large-v3',
-      response_format: 'text'
+      response_format: 'verbose_json'
     });
 
-    return transcription.text;
+    console.log('Groq response:', JSON.stringify(transcription));
+    
+    // Handle different response formats
+    let transcriptText = '';
+    if (transcription.text) {
+      transcriptText = transcription.text;
+    } else if (transcription.transcription && transcription.transcription.text) {
+      transcriptText = transcription.transcription.text;
+    } else if (typeof transcription === 'string') {
+      transcriptText = transcription;
+    } else {
+      throw new Error('Unexpected transcription response format');
+    }
+    
+    return transcriptText;
   } catch (error) {
     console.error('Error transcribing audio:', error.message);
     throw error;

@@ -83,6 +83,13 @@ router.post('/recording', async (req, res) => {
   
   console.log('Received recording callback from ' + from + ', Recording URL: ' + recordingUrl);
   
+  // Ignore requests where From is undefined - this is Twilio's double callback issue
+  if (!from || from === 'undefined' || from === null) {
+    console.log('Ignoring callback with undefined From');
+    res.status(200).send('OK');
+    return;
+  }
+  
   if (!recordingUrl) {
     console.log('No recording URL provided');
     res.status(200).send('OK');
