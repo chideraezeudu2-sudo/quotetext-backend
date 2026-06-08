@@ -3,10 +3,13 @@ const https = require('https');
 const http = require('http');
 
 const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
+  apiKey: process.env.GROQ_API_KEY || ''
 });
 
 async function extractMaterials(text) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY not configured');
+  }
   try {
     const completion = await groq.chat.completions.create({
       messages: [
@@ -70,6 +73,9 @@ function downloadAudio(url) {
 }
 
 async function transcribeAudio(audioUrl) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY not configured');
+  }
   try {
     console.log('Downloading audio from:', audioUrl);
     const audioBuffer = await downloadAudio(audioUrl);
