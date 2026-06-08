@@ -61,7 +61,8 @@ router.post('/inbound', async (req, res) => {
   twiml.record({
     action: baseUrl + '/voice/recording',
     method: 'POST',
-    maxLength: 300,
+    maxLength: 3600,
+    timeout: 60,
     finishOnKey: '#',
     recordingStatusCallback: baseUrl + '/voice/recording',
     recordingStatusCallbackMethod: 'POST'
