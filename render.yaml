@@ -6,8 +6,7 @@ services:
     repo: https://github.com/chideraezeudu2-sudo/quotetext-backend
     branch: main
     buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /health
+    startCommand: node index.js
     envVars:
       - key: TWILIO_ACCOUNT_SID
         sync: false
