@@ -115,9 +115,39 @@ router.post('/', async (req, res) => {
   await logMessage(from, body, 'inbound');
 
   // Look up business
-  const business = await findBusinessByPhone(from);
+  let business = await findBusinessByPhone(from);
 
+  // If no business and user texts YES, start onboarding
   if (!business) {
+    if (upperBody === 'YES') {
+      // Create new business record
+      const { data: newBusiness, error } = await supabase
+        .from('businesses')
+        .insert({
+          owner_phone: from,
+          onboarding_step: 'start',
+          onboarding_complete: false,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (error || !newBusiness) {
+        console.error('Failed to create business:', error);
+        const reply = "Sorry, something went wrong. Please try again.";
+        twiml.message(reply);
+        res.type('text/xml').send(twiml.toString());
+        return;
+      }
+      
+      business = newBusiness;
+      const reply = "Welcome to QuoteText! What trade are you in? (e.g. Landscaping, Roofing, Plumbing, Electrical)";
+      twiml.message(reply);
+      await logMessage(from, reply, 'outbound');
+      res.type('text/xml').send(twiml.toString());
+      return;
+    }
+    
     const reply = "Sorry, we don't recognize this number. Visit quotetext.io to sign up.";
     await logMessage(from, reply, 'outbound');
     twiml.message(reply);
@@ -131,19 +161,8 @@ router.post('/', async (req, res) => {
   if (!business.onboarding_complete) {
     const step = business.onboarding_step || 'start';
     
-    if (upperBody === 'YES' && step === 'start') {
-      // Begin onboarding - ask for trade
-      await supabase
-        .from('businesses')
-        .update({ 
-          onboarding_trade: body,
-          onboarding_step: 'trade'
-        })
-        .eq('id', business.id);
-      reply = "Welcome to QuoteText. What trade are you in? (e.g. Landscaping, Roofing, Plumbing, Electrical)";
-      
-    } else if (step === 'trade') {
-      // Save trade, ask for supplier
+    if (step === 'start') {
+      // First onboarding message - save trade and ask for supplier
       await supabase
         .from('businesses')
         .update({ 
