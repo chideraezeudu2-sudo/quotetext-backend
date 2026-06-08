@@ -48,19 +48,22 @@ router.post('/inbound', async (req, res) => {
   
   console.log('Received inbound call');
   
+  // Base URL for callbacks
+  const baseUrl = 'https://quotetext-backend.onrender.com';
+  
   // Play disclosure message
   twiml.say({
     voice: 'alice',
     language: 'en-US'
   }, 'This call is being recorded for materials management purposes.');
   
-  // Start recording with settings
+  // Start recording with settings - use full URL for callback
   twiml.record({
-    action: '/voice/recording',
+    action: baseUrl + '/voice/recording',
     method: 'POST',
     maxLength: 300,
     finishOnKey: '#',
-    recordingStatusCallback: '/voice/recording',
+    recordingStatusCallback: baseUrl + '/voice/recording',
     recordingStatusCallbackMethod: 'POST'
   });
   
